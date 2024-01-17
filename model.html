@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8">
+    <title>ENSAVE PROCCESS WEB SERVER</title>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/4.2.1/highcharts.js"></script>
+    <script type="text/javascript"
+        src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/4579/darkThemeHighCharts.js"></script>
+    <script type="text/javascript" src="model.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
+    <link rel="stylesheet" href="model.css">
+</head>
+
+<body>
+    <section class="dashboard" id="main-column">
+        <div id="about">
+            <h1 class="space-x-3">
+                <span class="font-semibold text-2xl tracking-tight uppercase">ENSAVE PROCCESS WEB SERVER</span>
+                <span class="font-semibold text-xm tracking-tight uppercase" id="strAtividade">--</span>
+            </h1>
+            <p class="flex items-center space-x-2 text-center text-xs font-semibold">
+                <span class="w-3/12" title="Realizado / Monitorado"><span id="strPulsosCalib"
+                        class="text-yellow-300">%PULSOS-CALIB%</span>
+                    PULSOS (R/M)</span>
+                <span class="w-3/12"><span id="strFatorCalibracao" class="text-yellow-300">%FATOR-CALIBRACAO%</span>
+                    FATOR DE
+                    CALIBRAÇÃO</span>
+                <span class="w-3/12"><span id="strTempoSelagem" class="text-yellow-300">%TEMPO-SELAGEM%</span><span
+                        class="text-yellow-300">(s)</span> DE SELAGEM</span>
+                <span class="w-3/12"><span id="strVolumeASerEnvasado"
+                        class="text-yellow-300">%VOLUME-A-SER-ENVASADO%</span><span class="text-yellow-300">(g)</span> A
+                    ENVASAR</span>
+            </p>
+            <!-- <form class="w-full %HIDDEN-FORM-MEDICAO%" id="formMedicaoColeta" action="/salvarMedicao" method="POST"> -->
+            <form class="w-full %HIDDEN-FORM-MEDICAO%" id="formMedicaoColeta"
+                onsubmit="event.preventDefault(); enviarDados('formMedicaoColeta');">
+                <div class="flex items-center border-b border-teal-500 py-3 space-x-4">
+                    <input id="input-medicao" name="input-medicao" placeholder="Volume coletado (g)"
+                        class="block appearance-none bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500 w-3/5"
+                        type="number" step="1" min="50" max="1000" value="" />
+                    <input
+                        class="flex-shrink-0 bg-green-400 border-green-400 hover:bg-green-500 hover:border-green-600 text-sm border-2 text-black font-semibold py-3 px-2 rounded w-2/5"
+                        type="submit" value="Salvar medição" />
+                </div>
+            </form>
+            <!-- <form class="w-full %HIDDEN-FORM-FATOR-CALIBRACAO%" id="formFatorCalibracao" action="/salvarFatorCalibracao" method="POST"> -->
+            <form class="w-full %HIDDEN-FORM-FATOR-CALIBRACAO%" id="formFatorCalibracao"
+                onsubmit="event.preventDefault(); enviarDados('formFatorCalibracao');">
+                <div class="flex items-center border-b border-teal-500 py-3 space-x-4">
+                    <input id="input-fator-calibracao" name="input-fator-calibracao" placeholder="Fator de calibração"
+                        class="block appearance-none bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500 w-3/5"
+                        type="number" step=".1" min=".1" value="" />
+                    <input
+                        class="flex-shrink-0 bg-green-400 border-green-400 hover:bg-green-500 hover:border-green-600 text-sm border-2 text-black font-semibold py-3 px-2 rounded w-2/5"
+                        type="submit" value="Salvar dado" />
+                </div>
+            </form>
+            <!-- <form class="w-full %HIDDEN-FORM-PARAMETRO%" id="formVolumePrevisto" action="/salvarParametros" method="POST"> -->
+            <form class="w-full %HIDDEN-FORM-PARAMETRO%" id="formVolumePrevisto"
+                onsubmit="event.preventDefault(); enviarDados('formVolumePrevisto');">
+                <div class="flex items-center border-b border-teal-500 py-3 space-x-4">
+                    <input id="input-tempo-selagem" name="input-tempo-selagem" placeholder="Selagem (s)" required
+                        class="block appearance-none bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500 w-4/12"
+                        type="number" step=".25" min="1" max="10" value="" title="Tempo de selagem em segundos" />
+                    <select id="input-parametro" name="input-parametro" title="Volume a ser monitorado" required
+                        class="block appearance-none bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500 w-4/12">
+                        <option value="" disabled selected>Volume (g)</option>
+                        <option value="50">50 g</option>
+                        <option value="100">100 g</option>
+                        <option value="200">200 g</option>
+                        <option value="500">500 g</option>
+                        <option value="1000">1000 g</option>
+                    </select>
+                    <input
+                        class="flex-shrink-0 bg-green-400 border-green-400 hover:bg-green-500 hover:border-green-600 text-sm border-2 text-black font-semibold py-3 px-2 rounded w-4/12"
+                        type="submit" value="Salvar parâmetro" />
+                </div>
+            </form>
+        </div>
+        <div id="sensorValues">
+            <div class="sensor-values">
+                <div id="vazao" class="vazao">0</div>
+                <label>Vazão</label>
+            </div>
+            <div class="sensor-values">
+                <div id="volume" class="volume">0</div>
+                <label>Volume</label>
+            </div>
+            <div class="sensor-values">
+                <div id="envase" class="envase">0</div>
+                <label>Envase</label>
+            </div>
+        </div>
+        <div id="sensorData"></div>
+        <div id="events">
+            <ul id="event-feed"></ul>
+        </div>
+    </section>
+</body>
+<script>
+    var globalVazao = 0.0,
+        globalVolume = 0.0,
+        globalEnvase = 0,
+        globalVolumePrevisto = 0,
+        logs = [];
+
+    let intervaloGetParametros, intervaloGetMedicao;
+    let tempoChamadaApi = 1000;
+    let getTempoChamadaApi = () => tempoChamadaApi;
+
+    function callingError() {
+        var novoTempo = (getTempoChamadaApi() * 2);
+        console.log("Erro ao chamar API. Tentando novamente em " + (novoTempo / 1000) + "s");
+        alterarIntervalo(novoTempo);
+    }
+
+    function getParametros() {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+                var dataParametros = this.responseText.split('|');
+                var qtdPulsosCalib = dataParametros[0],
+                    fatorCalibracao = dataParametros[1],
+                    tempoSelagem = dataParametros[2],
+                    volumeASerEnvasado = dataParametros[3];
+                // document.getElementById("strPulsosCalib").innerHTML = qtdPulsosCalib + "/" + volumeASerEnvasado;
+                document.getElementById("strFatorCalibracao").innerHTML = fatorCalibracao;
+                document.getElementById("strTempoSelagem").innerHTML = tempoSelagem;
+                document.getElementById("strVolumeASerEnvasado").innerHTML = volumeASerEnvasado;
+                globalVolumePrevisto = volumeASerEnvasado;
+                if (fatorCalibracao > 0) {
+                    document.getElementById("formMedicaoColeta").classList.add("hidden");
+                    document.getElementById("formFatorCalibracao").classList.add("hidden");
+                    document.getElementById("formVolumePrevisto").classList.remove("hidden");
+                }
+                else {
+                    document.getElementById("formMedicaoColeta").classList.remove("hidden");
+                    document.getElementById("formFatorCalibracao").classList.remove("hidden");
+                    document.getElementById("formVolumePrevisto").classList.add("hidden");
+                }
+                if (getTempoChamadaApi() != 1000)
+                    alterarIntervalo(1000);
+            }
+        };
+        xhttp.open("GET", "/parametros", true);
+        xhttp.send();
+    }
+
+    function getMedicao() {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+                var dataMedicao = this.responseText.split('|');
+                var dscAtividade = dataMedicao[0];
+                globalVazao = dataMedicao[1];
+                globalVolume = dataMedicao[2];
+                globalEnvase = dataMedicao[3];
+                var pulsosRealizados = dataMedicao[4];
+                var pulsosMonitorados = dataMedicao[5];
+                var eventosString = dataMedicao[6];
+                document.getElementById("strAtividade").innerHTML = dscAtividade;
+                document.getElementById("strPulsosCalib").innerHTML = pulsosRealizados + "/" + pulsosMonitorados;
+                var eventos = eventosString.split(';');
+                for (var i = 0; i < eventos.length; i++) {
+                    logs.push(eventos[i]);
+                }
+                if (getTempoChamadaApi() != 1000)
+                    alterarIntervalo(1000);
+            }
+        };
+        xhttp.onerror = callingError;
+        xhttp.open("GET", "/medicao", true);
+        xhttp.send();
+    }
+
+    function enviarDados(formId) {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) { }
+        };
+        xhttp.open("POST", "/salvar", true);
+        xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+        var data = "";
+        if (formId == "formMedicaoColeta") {
+            data = "input-medicao=" + document.getElementById("input-medicao").value;
+        }
+        else if (formId == "formFatorCalibracao") {
+            data = "input-fator-calibracao=" + document.getElementById("input-fator-calibracao").value;
+        }
+        else if (formId == "formVolumePrevisto") {
+            data = "input-tempo-selagem=" + document.getElementById("input-tempo-selagem").value;
+            data += "&input-parametro=" + document.getElementById("input-parametro").value;
+        }
+        xhttp.send(data);
+        console.log("Enviando dados: " + data);
+        console.log("Response: " + xhttp.responseText);
+    }
+
+    function alterarIntervalo(novoIntervalo) {
+        clearInterval(intervaloGetParametros);
+        clearInterval(intervaloGetMedicao);
+        tempoChamadaApi = novoIntervalo;
+        intervaloGetParametros = setInterval(getParametros, getTempoChamadaApi());
+        intervaloGetMedicao = setInterval(getMedicao, getTempoChamadaApi());
+    }
+
+    intervaloGetParametros = setInterval(getParametros, getTempoChamadaApi());
+    intervaloGetMedicao = setInterval(getMedicao, getTempoChamadaApi());
+
+    // setInterval(function () {
+    //     var xhttp = new XMLHttpRequest();
+    //     xhttp.onreadystatechange = function () {
+    //         if (this.readyState == 4 && this.status == 200) {
+    //             objApi.tempoChamadaApi = 1000;
+    //             var dataParametros = this.responseText.split('|');
+    //             var qtdPulsosCalib = dataParametros[0],
+    //                 fatorCalibracao = dataParametros[1],
+    //                 tempoSelagem = dataParametros[2],
+    //                 volumeASerEnvasado = dataParametros[3];
+    //             // document.getElementById("strPulsosCalib").innerHTML = qtdPulsosCalib + "/" + volumeASerEnvasado;
+    //             document.getElementById("strFatorCalibracao").innerHTML = fatorCalibracao;
+    //             document.getElementById("strTempoSelagem").innerHTML = tempoSelagem;
+    //             document.getElementById("strVolumeASerEnvasado").innerHTML = volumeASerEnvasado;
+    //             globalVolumePrevisto = volumeASerEnvasado;
+    //             if (fatorCalibracao > 0) {
+    //                 document.getElementById("formMedicaoColeta").classList.add("hidden");
+    //                 document.getElementById("formFatorCalibracao").classList.add("hidden");
+    //                 document.getElementById("formVolumePrevisto").classList.remove("hidden");
+    //             }
+    //             else {
+    //                 document.getElementById("formMedicaoColeta").classList.remove("hidden");
+    //                 document.getElementById("formFatorCalibracao").classList.remove("hidden");
+    //                 document.getElementById("formVolumePrevisto").classList.add("hidden");
+    //             }
+    //         }
+    //     };
+    //     xhttp.onerror = function () {
+    //         objApi.tempoChamadaApi = 2 * objApi.tempoChamadaApi;
+    //         console.log("Erro ao chamar API. Tentando novamente em " + (objApi.tempoChamadaApi / 1000) + "s");
+    //     };
+    //     xhttp.open("GET", "/parametros", true);
+    //     xhttp.send();
+    // }, tempoChamadaApi());
+
+    // setInterval(function () {
+    //     var xhttp = new XMLHttpRequest();
+    //     xhttp.onreadystatechange = function () {
+    //         if (this.readyState == 4 && this.status == 200) {
+    //             var dataMedicao = this.responseText.split('|');
+    //             var dscAtividade = dataMedicao[0];
+    //             globalVazao = dataMedicao[1];
+    //             globalVolume = dataMedicao[2];
+    //             globalEnvase = dataMedicao[3];
+    //             var pulsosRealizados = dataMedicao[4];
+    //             var pulsosMonitorados = dataMedicao[5];
+    //             var eventosString = dataMedicao[6];
+    //             document.getElementById("strAtividade").innerHTML = dscAtividade;
+    //             document.getElementById("strPulsosCalib").innerHTML = pulsosRealizados + "/" + pulsosMonitorados;
+    //             var eventos = eventosString.split(';');
+    //             for (var i = 0; i < eventos.length; i++) {
+    //                 logs.push(eventos[i]);
+    //             }
+    //         }
+    //     };
+    //     xhttp.open("GET", "/medicao", true);
+    //     xhttp.send();
+    // }, tempoChamadaApi());
+</script>
+
+</html>
