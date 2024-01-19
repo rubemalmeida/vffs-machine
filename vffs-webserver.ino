@@ -20,6 +20,7 @@
 #define TURN_OFF 1
 
 #define PIN_CONTROL(pinValue, state) pinControl(pinValue, state, __func__)
+#define GET_PULSE_COUNT() obterQtdPulsos(__func__)
 
 const char *pin_names[] = {
     "",                      // 0
@@ -106,16 +107,16 @@ int qtdEnvaseRealizado = 0; // Contador de vezes que o processo foi executado
 // int vazao = 0;              // Vazão do fluido em processo de envase
 // int volume = 0;             // Volume do fluido em processo de envase
 
-volatile byte qtdPulsoCalibracao = 0; // Contador de pulsos do medidor de fluxo usado na calibração
-volatile byte qtdPulso = 0;           // Contador de pulsos do medidor de fluxo
+volatile long qtdPulsoCalibracao = 0; // Contador de pulsos do medidor de fluxo usado na calibração
+volatile long qtdPulsoPorSegundo = 0; // Contador de pulsos do medidor de fluxo por segundo
+volatile long qtdPulsos = 0;          // Contador de pulsos do medidor de fluxo
 int qtdPulsoAMonitorar = 0;           // Quantidade de pulsos a monitorar
-byte pulse1Sec = 0;
+long pulse1Sec = 0;
 float fatorCalibracao = 0.0; // Fator de calibracao do medidor de fluxo
 float tempoSelagem = 0.0;    // Tempo de selagem do pistão em segundos
 int volumeAserEnvasado = 0;  // Volume a ser envasado
 long medicaoPreviousMillis = 0;
 int intervalMedicao = 1000;
-bool medicaoHabilitada = false;
 float flowRate;
 unsigned int flowMilliLitres;
 unsigned long totalMilliLitres;
@@ -146,7 +147,7 @@ Task TarefaWifi(500, TASK_FOREVER, &checkWifi);
 Task TarefaCalibracao(100, TASK_FOREVER, &checkCalibracao);
 Task TarefaEnvase(100, TASK_FOREVER, &checkEnvase);
 Task TarefaParadaEmergencial(100, TASK_FOREVER, &checkParadaEmergencial);
-Task TarefaMedicao(100, TASK_FOREVER, &checkMedicao);
+Task TarefaMedicao(50, TASK_FOREVER, &checkMedicao);
 Task TarefaPiscaVerde(500, TASK_FOREVER, &checkPiscaVerde);
 
 void log(String evento, String type = "")
@@ -157,7 +158,6 @@ void log(String evento, String type = "")
     Serial.println(evento);
 }
 
-// void pinControl(int pinValue, int state)
 void pinControl(int pinValue, int state, const char *callingFunction)
 {
     String stateName = state == TURN_ON ? "ON" : "OFF";
@@ -166,6 +166,8 @@ void pinControl(int pinValue, int state, const char *callingFunction)
     {
         if (pin_names[pinValue] == "")
             pinName += "-NÃO DEFINIDO";
+        // else if (pinValue == PIN_LED_BRANCO || pinValue == PIN_LED_VERDE)
+        // return;
         else if (state == TURN_ON || state == TURN_OFF)
         {
             pinName = pin_names[pinValue];
@@ -174,8 +176,6 @@ void pinControl(int pinValue, int state, const char *callingFunction)
                 statusLedBranco = state == TURN_ON ? true : false;
             else if (pinValue == PIN_LED_VERDE)
                 statusLedVerde = state == TURN_ON ? true : false;
-            // if (pinValue == PIN_LED_BRANCO || pinValue == PIN_LED_VERDE)
-            //   return;
         }
         else
             stateName += "ESTADO INVALIDO";
@@ -183,7 +183,7 @@ void pinControl(int pinValue, int state, const char *callingFunction)
     else
         pinName += "-DESCONHECIDO";
 
-    log((String)callingFunction + " > " + pinName + ": " + stateName);
+    log((String)callingFunction + " > " + stateName + ": " + pinName);
 }
 
 void waitDelay(unsigned long milliseconds)
@@ -196,10 +196,19 @@ void waitDelay(unsigned long milliseconds)
     }
 }
 
+long obterQtdPulsos(const char *callingFunction)
+{
+    // Serial.println((String)callingFunction + " > Qtd de pulsos");
+    noInterrupts();
+    long pulsos = qtdPulsos;
+    interrupts();
+    return pulsos;
+}
+
 String processor(const String &var)
 {
     if (var == "PULSOS-CALIB")
-        return String(qtdPulso) + "/" + String(qtdPulsoAMonitorar);
+        return String(GET_PULSE_COUNT()) + "/" + String(qtdPulsoAMonitorar);
 
     if (var == "FATOR-CALIBRACAO" && fatorCalibracao > 0)
         return String(fatorCalibracao);
@@ -282,33 +291,31 @@ void checkCalibracao()
     // Processo de calibração
     btnCalibEstadoCorrente = digitalRead(PIN_BOTAO_CALIBRACAO);
     if (
-        (btnCalibUltimoEstado == HIGH) &&
-        (btnCalibEstadoCorrente == LOW) &&
-        paradaEmergencial == false)
+        btnCalibUltimoEstado == HIGH &&
+        btnCalibEstadoCorrente == LOW &&
+        paradaEmergencial == false &&
+        (millis() - btnCalibTempoPrimeiroPressionado) >= 500)
     {
-        if ((millis() - btnCalibTempoPrimeiroPressionado) >= 500) // Botão mantido pressionado por 500ms
+        btnCalibTempoPrimeiroPressionado = millis();
+        if ((millis() - btnCalibTempoUltimoAcionamento) >= INTERVALO_MINIMO)
         {
-            btnCalibTempoPrimeiroPressionado = millis();
-            if ((millis() - btnCalibTempoUltimoAcionamento) >= INTERVALO_MINIMO)
-            {
-                log("Botão de calibração pressionado", "start");
-                btnCalibTempoUltimoAcionamento = millis();
-                btnCalibUltimoEstadoEfetivo = HIGH;
-                calibracao(true);
-            }
+            log("Botão de calibração pressionado", "start");
+            btnCalibTempoUltimoAcionamento = millis();
+            btnCalibUltimoEstadoEfetivo = HIGH;
+            calibracao(true);
         }
     }
     else if (
-        ((btnCalibUltimoEstado == LOW) &&
-         (btnCalibEstadoCorrente == HIGH) &&
-         (btnCalibUltimoEstadoEfetivo == HIGH)) ||
-        paradaEmergencial == true)
+        (btnCalibUltimoEstado == LOW &&
+         btnCalibEstadoCorrente == HIGH &&
+         btnCalibUltimoEstadoEfetivo == HIGH) ||
+        (modoCalibracao && paradaEmergencial))
     {
         log("Botão de calibração liberado");
         btnCalibUltimoEstadoEfetivo = LOW;
         btnCalibTempoPrimeiroPressionado = 0; // Reset the first pressed time
         calibracao(false);
-        if (paradaEmergencial == true)
+        if (paradaEmergencial)
             paradaEmergencial = false;
     }
 
@@ -321,49 +328,44 @@ void checkEnvase()
     // Processo de envase
     btnProcEstadoCorrente = digitalRead(PIN_BOTAO_PROCESSO);
     if (
-        (btnProcUltimoEstado == HIGH) &&
-        (btnProcEstadoCorrente == LOW))
+        paradaEmergencial == false &&                     // Se a parada emergencial não estiver acionada
+        !modoEnvase && !modoCalibracao && !modoSelagem && // Se não estiver em nenhum modo
+        btnProcUltimoEstado == HIGH &&
+        btnProcEstadoCorrente == LOW &&
+        (millis() - btnProcStartAcionamento) >= 500)
     {
-        log("1");
-        if ((millis() - btnProcStartAcionamento) >= 500) // Botão mantido pressionado por 500ms
+        btnProcStartAcionamento = millis();
+        if ((millis() - btnProcTempoUltimoAcionamento) >= INTERVALO_MINIMO)
         {
-            log("2");
-            btnProcStartAcionamento = millis();
-            if ((millis() - btnProcTempoUltimoAcionamento) >= INTERVALO_MINIMO)
-            {
-                log("Botão de envase pressionado");
-                btnProcTempoUltimoAcionamento = millis();
-                btnProcUltimoEstadoEfetivo = HIGH;
-                envase(true);
-            }
+            log("Botão de envase pressionado");
+            btnProcTempoUltimoAcionamento = millis();
+            btnProcUltimoEstadoEfetivo = HIGH;
+            envase(true);
         }
     }
-    else if (
-        ((btnProcUltimoEstado == LOW) &&
-         (btnProcEstadoCorrente == HIGH) &&
-         (btnProcUltimoEstadoEfetivo == HIGH) &&
-         (modoEnvase == true)) ||
-        paradaEmergencial == true)
+    else if ((btnProcUltimoEstado == LOW &&
+              btnProcEstadoCorrente == HIGH &&
+              btnProcUltimoEstadoEfetivo == HIGH) ||
+             (modoEnvase && paradaEmergencial))
     {
-        if (modoEnvase == true)
-            envase(false);
+        envase(false);
         btnProcUltimoEstadoEfetivo = LOW;
-        btnProcStartAcionamento = 0; // Reset the first pressed time
+        if (paradaEmergencial)
+            paradaEmergencial = false;
     }
 
     if (btnProcUltimoEstado != btnProcEstadoCorrente)
-    {
-        log("3");
         btnProcUltimoEstado = btnProcEstadoCorrente;
-    }
 }
 
 void checkSelagem()
 {
-    if ((modoSelagem == true) && (((millis() - inicioSelagem) >= (tempoSelagem * 1000)) || (paradaEmergencial == true)))
+    if (modoSelagem &&
+        (millis() - inicioSelagem >= tempoSelagem * 1000 || paradaEmergencial))
     {
-        if (paradaEmergencial == true)
+        if (paradaEmergencial)
             paradaEmergencial = false;
+        modoSelagem = false;
         PIN_CONTROL(PIN_VALVULA_SELAGEM, TURN_OFF);
         waitDelay(1000);
         PIN_CONTROL(PIN_VALVULA_LIBERACAO, TURN_OFF);
@@ -375,6 +377,7 @@ void checkSelagem()
 
     modoSelagem = true;
     log("Selando... (" + String(tempoSelagem) + "s)");
+    PIN_CONTROL(PIN_VALVULA_LIBERACAO, TURN_ON);
     PIN_CONTROL(PIN_VALVULA_SELAGEM, TURN_ON);
     inicioSelagem = millis();
 }
@@ -387,14 +390,9 @@ void checkParadaEmergencial()
     bool buttonState = digitalRead(PIN_BOTAO_EMERGENCIAL);
     if (buttonState == LOW)
     {
-        if (btnParadaStartAcionamento == 0) // Se o botão acabou de ser pressionado
+        if ((millis() - btnParadaStartAcionamento) > 100) // Se o botão foi mantido pressionado por 500ms
         {
             btnParadaStartAcionamento = millis(); // Registre o tempo de pressionamento do botão
-        }
-        else if ((millis() - btnParadaStartAcionamento) > 100) // Se o botão foi mantido pressionado por 500ms
-        {
-            btnParadaStartAcionamento = 0; // Reset the button press time
-
             if ((millis() - btnParadaTempoUltimoAcionamento) >= INTERVALO_MINIMO)
             {
                 paradaEmergencial = true;
@@ -415,32 +413,32 @@ void checkParadaEmergencial()
             }
         }
     }
-    else
-    {
-        btnParadaStartAcionamento = 0; // Reset the button press time if the button is not being pressed
-    }
 }
 
 void checkMedicao()
 {
-    if (fatorCalibracao == 0)
-        return;
-
-    if (medicaoHabilitada && (millis() - medicaoPreviousMillis >= intervalMedicao))
+    if ((modoEnvase || modoCalibracao) && (millis() - medicaoPreviousMillis >= intervalMedicao))
     {
-        pulse1Sec = qtdPulso;
-        qtdPulso = 0;
-        flowRate = ((1000.0 / (millis() - medicaoPreviousMillis)) * pulse1Sec) / fatorCalibracao; // in L/min
         medicaoPreviousMillis = millis();
 
-        flowMilliLitres = (flowRate / 60) * 1000; // mL/s
-        totalMilliLitres += flowMilliLitres;      // mL
-    }
+        if (modoEnvase && fatorCalibracao > 0)
+        {
+            long qtdPulsoAnterior = pulse1Sec;
+            long qtdPulsoAtual = GET_PULSE_COUNT();
+            pulse1Sec = qtdPulsoAtual - qtdPulsoAnterior;
+            flowRate = ((1000.0 / (millis() - medicaoPreviousMillis)) * pulse1Sec) / fatorCalibracao; // in L/min
 
-    if (modoEnvase)
-        medicaoHabilitada = true;
-    else
-        medicaoHabilitada = false;
+            flowMilliLitres = (flowRate / 60) * 1000; // mL/s
+            totalMilliLitres += flowMilliLitres;      // mL
+            int tempoDecorrido = millis() - btnProcStartAcionamento;
+            log("Envasando (" + String(tempoDecorrido / 1000) + "s)... " + String(qtdPulsoAtual) + " pulsos somados.");
+        }
+        else if (modoCalibracao)
+        {
+            int tempoDecorrido = millis() - btnCalibTempoPrimeiroPressionado;
+            log("Calibrando (" + String(tempoDecorrido / 1000) + "s)... " + String(GET_PULSE_COUNT()) + " pulsos somados.");
+        }
+    }
 }
 
 void salvar(AsyncWebServerRequest *request)
@@ -519,29 +517,34 @@ void calibracao(bool btnPressionado)
         log("Encerrando modo calibração");
         PIN_CONTROL(PIN_VALVULA_ENVASE, TURN_OFF);
         PIN_CONTROL(PIN_MOTOR_BOMBA, TURN_OFF);
-        qtdPulsoCalibracao = qtdPulso;
-        // qtdPulso = 0;
+        modoCalibracao = false;
+        qtdPulsoCalibracao = GET_PULSE_COUNT();
         waitDelay(1000);
         PIN_CONTROL(PIN_VALVULA_LIBERACAO, TURN_OFF);
         PIN_CONTROL(PIN_LED_VERDE, TURN_OFF);
         log("Quantidade de pulsos: " + String(qtdPulsoCalibracao));
-        modoCalibracao = false;
         return;
     }
 
     if (modoCalibracao == true)
         return; // se já estiver em modo de calibração, não fazer nada
 
-    modoCalibracao = true;
-    log("Modo calibração iniciado");
-    qtdPulso = 0;
+    noInterrupts();
+    qtdPulsos = 0;
+    interrupts();
+
     qtdPulsoCalibracao = 0;
     qtdPulsoAMonitorar = 0;
     fatorCalibracao = 0.0;
 
+    PIN_CONTROL(PIN_VALVULA_LIBERACAO, TURN_ON);
+    waitDelay(1000);
+
+    modoCalibracao = true;
+    log("Modo calibração iniciado");
+
     PIN_CONTROL(PIN_MOTOR_BOMBA, TURN_ON);
     PIN_CONTROL(PIN_VALVULA_ENVASE, TURN_ON);
-    PIN_CONTROL(PIN_VALVULA_LIBERACAO, TURN_ON);
     PIN_CONTROL(PIN_LED_VERDE, TURN_ON);
     log("Calibrando...");
 }
@@ -550,7 +553,8 @@ void envase(bool btnPressionado)
 {
     if (modoEnvase == true)
     {
-        if (btnPressionado == false && (totalMilliLitres > volumeAserEnvasado || qtdPulso > qtdPulsoAMonitorar))
+        long qtdPulsoAtual = GET_PULSE_COUNT();
+        if (!btnPressionado && (totalMilliLitres > volumeAserEnvasado || qtdPulsoAtual > qtdPulsoAMonitorar))
         {
             PIN_CONTROL(PIN_VALVULA_ENVASE, TURN_OFF);
             PIN_CONTROL(PIN_MOTOR_BOMBA, TURN_OFF);
@@ -559,8 +563,8 @@ void envase(bool btnPressionado)
             if (totalMilliLitres > volumeAserEnvasado)
                 log("Volume (" + String(totalMilliLitres) + "mL) atingido");
 
-            if (qtdPulso > qtdPulsoAMonitorar)
-                log("Quantidade de pulsos (" + String(qtdPulso) + ") atingida");
+            if (qtdPulsoAtual > qtdPulsoAMonitorar)
+                log("Quantidade de pulsos (" + String(qtdPulsoAtual) + ") atingida");
 
             PIN_CONTROL(PIN_LED_VERDE, TURN_OFF);
             log("Modo envase encerrado");
@@ -568,6 +572,9 @@ void envase(bool btnPressionado)
         }
         return;
     }
+
+    if (!btnPressionado)
+        return;
 
     if (fatorCalibracao == 0)
     {
@@ -585,7 +592,10 @@ void envase(bool btnPressionado)
         return;
     }
 
-    qtdPulso = 0;
+    noInterrupts();
+    qtdPulsos = 0;
+    interrupts();
+
     flowRate = 0.0;
     flowMilliLitres = 0;
     totalMilliLitres = 0;
@@ -612,7 +622,7 @@ void setup()
     pinMode(PIN_BOTAO_PROCESSO, INPUT_PULLUP);
     pinMode(PIN_BOTAO_CALIBRACAO, INPUT_PULLUP);
     pinMode(PIN_BOTAO_EMERGENCIAL, INPUT_PULLUP);
-    pinMode(PIN_MEDIDOR_FLUXO, INPUT);
+    pinMode(PIN_MEDIDOR_FLUXO, INPUT_PULLDOWN);
 
     pinMode(PIN_VALVULA_LIBERACAO, OUTPUT);
     pinMode(PIN_VALVULA_ENVASE, OUTPUT);
@@ -666,7 +676,6 @@ void setup()
     TarefaParadaEmergencial.enable();
     TarefaMedicao.enable();
 
-    qtdPulso = 0;
     flowRate = 0.0;
     flowMilliLitres = 0;
     totalMilliLitres = 0;
@@ -690,7 +699,7 @@ void setup()
         "|" + String(flowMilliLitres) + 
         "|" + String(totalMilliLitres) + 
         "|" + String(qtdEnvaseRealizado) + 
-        "|" + String(qtdPulso) + 
+        "|" + String(GET_PULSE_COUNT()) + 
         "|" + String(qtdPulsoAMonitorar) + 
         "|" + eventosString
     );
