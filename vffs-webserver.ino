@@ -112,9 +112,9 @@ volatile long qtdPulsoPorSegundo = 0; // Contador de pulsos do medidor de fluxo 
 volatile long qtdPulsos = 0;          // Contador de pulsos do medidor de fluxo
 int qtdPulsoAMonitorar = 0;           // Quantidade de pulsos a monitorar
 long pulse1Sec = 0;
-float fatorCalibracao = 0.0; // Fator de calibracao do medidor de fluxo
-float tempoSelagem = 0.0;    // Tempo de selagem do pistão em segundos
-int volumeAserEnvasado = 0;  // Volume a ser envasado
+float fatorCalibracao = 0.0;  // Fator de calibracao do medidor de fluxo
+float tempoSelagem = 0.0;     // Tempo de selagem do pistão em segundos
+float volumeAserEnvasado = 0; // Volume a ser envasado
 long medicaoPreviousMillis = 0;
 int intervalMedicao = 1000;
 float flowRate;
@@ -482,9 +482,9 @@ void salvar(AsyncWebServerRequest *request)
         {
             if (qtdPulsoCalibracao > 0)
             {
-                int volumeDispensado = valor.toInt();
+                float volumeDispensado = valor.toFloat();
                 log("Volume dispensado parametrizado: " + String(volumeDispensado));
-                fatorCalibracao = volumeDispensado / qtdPulsoCalibracao;
+                fatorCalibracao = (volumeDispensado / qtdPulsoCalibracao) * 1000000;
                 log("Fator de calibracao calculado: " + String(fatorCalibracao));
             }
             else
@@ -504,8 +504,8 @@ void salvar(AsyncWebServerRequest *request)
         {
             if (fatorCalibracao > 0)
             {
-                volumeAserEnvasado = valor.toInt();
-                qtdPulsoAMonitorar = volumeAserEnvasado / fatorCalibracao;
+                volumeAserEnvasado = valor.toFloat();
+                qtdPulsoAMonitorar = round((volumeAserEnvasado * 1000000) / fatorCalibracao);
             }
             else
             {
