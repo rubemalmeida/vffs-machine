@@ -3,7 +3,7 @@
 
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <title>ENSAVE PROCCESS WEB SERVER</title>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/4.2.1/highcharts.js"></script>
     <script type="text/javascript"
@@ -24,17 +24,17 @@
                 <span class="w-3/12" title="Realizado / Monitorado"><span id="strPulsosCalib"
                         class="text-yellow-300">%PULSOS-CALIB%</span>
                     PULSOS (R/M)</span>
-                <span class="w-3/12"><span id="strFatorCalibracao" class="text-yellow-300">%FATOR-CALIBRACAO%</span>
-                    FATOR DE
-                    CALIBRAÇÃO</span>
+                <!-- <span class="w-3/12"><span id="strFatorCalibracao" class="text-yellow-300">%FATOR-CALIBRACAO%</span>
+                    FATOR DE CALIBRAÇÃO</span> -->
+                <span class="w-3/12"><span id="strTipoLiquido" class="text-yellow-300">%TIPO-LIQUIDO%</span>
+                    TIPO DE L&Iacute;QUIDO</span>
                 <span class="w-3/12"><span id="strTempoSelagem" class="text-yellow-300">%TEMPO-SELAGEM%</span><span
                         class="text-yellow-300">(s)</span> DE SELAGEM</span>
                 <span class="w-3/12"><span id="strVolumeASerEnvasado"
                         class="text-yellow-300">%VOLUME-A-SER-ENVASADO%</span><span class="text-yellow-300">(g)</span> A
                     ENVASAR</span>
             </p>
-            <!-- <form class="w-full %HIDDEN-FORM-MEDICAO%" id="formMedicaoColeta" action="/salvarMedicao" method="POST"> -->
-            <form class="w-full %HIDDEN-FORM-MEDICAO%" id="formMedicaoColeta"
+            <!-- <form class="w-full %HIDDEN-FORM-MEDICAO%" id="formMedicaoColeta"
                 onsubmit="event.preventDefault(); enviarDados('formMedicaoColeta');">
                 <div class="flex items-center border-b border-teal-500 py-3 space-x-4">
                     <input id="input-medicao" name="input-medicao" placeholder="Volume coletado (g)"
@@ -44,9 +44,25 @@
                         class="flex-shrink-0 bg-green-400 border-green-400 hover:bg-green-500 hover:border-green-600 text-sm border-2 text-black font-semibold py-3 px-2 rounded w-2/5"
                         type="submit" value="Salvar medição" />
                 </div>
+            </form> -->
+            <form class="w-full %HIDDEN-FORM-TIPO-LIQUIDO%" id="formTipoLiquido"
+                onsubmit="event.preventDefault(); enviarDados('formTipoLiquido');">
+                <div class="flex items-center border-b border-teal-500 py-3 space-x-4">
+                    <select id="input-tipo-liquido" name="input-tipo-liquido" title="Tipo de líquido" required
+                        class="block appearance-none bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500 w-3/5">
+                        <option value="" disabled selected>Tipo de l&iacute;quido</option>
+                        <option value="agua">&Aacute;gua</option>
+                        <option value="abaxi">Abacaxi</option>
+                        <option value="manga">Manga</option>
+                        <option value="maracuja">Maracuj&aacute;</option>
+                        <option value="morango">Morango</option>
+                    </select>
+                    <input
+                        class="flex-shrink-0 bg-green-400 border-green-400 hover:bg-green-500 hover:border-green-600 text-sm border-2 text-black font-semibold py-3 px-2 rounded w-2/5"
+                        type="submit" value="Salvar" />
+                </div>
             </form>
-            <!-- <form class="w-full %HIDDEN-FORM-FATOR-CALIBRACAO%" id="formFatorCalibracao" action="/salvarFatorCalibracao" method="POST"> -->
-            <form class="w-full %HIDDEN-FORM-FATOR-CALIBRACAO%" id="formFatorCalibracao"
+            <!-- <form class="w-full %HIDDEN-FORM-FATOR-CALIBRACAO%" id="formFatorCalibracao"
                 onsubmit="event.preventDefault(); enviarDados('formFatorCalibracao');">
                 <div class="flex items-center border-b border-teal-500 py-3 space-x-4">
                     <input id="input-fator-calibracao" name="input-fator-calibracao" placeholder="Fator de calibração"
@@ -56,15 +72,14 @@
                         class="flex-shrink-0 bg-green-400 border-green-400 hover:bg-green-500 hover:border-green-600 text-sm border-2 text-black font-semibold py-3 px-2 rounded w-2/5"
                         type="submit" value="Salvar dado" />
                 </div>
-            </form>
-            <!-- <form class="w-full %HIDDEN-FORM-PARAMETRO%" id="formVolumePrevisto" action="/salvarParametros" method="POST"> -->
+            </form> -->
             <form class="w-full %HIDDEN-FORM-PARAMETRO%" id="formVolumePrevisto"
                 onsubmit="event.preventDefault(); enviarDados('formVolumePrevisto');">
                 <div class="flex items-center border-b border-teal-500 py-3 space-x-4">
-                    <input id="input-tempo-selagem" name="input-tempo-selagem" placeholder="Selagem (s)" required
+                    <input id="input-tempo-selagem" name="input-tempo-selagem" placeholder="Tempo selagem (s)" required
                         class="block appearance-none bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500 w-4/12"
                         type="number" step=".25" min="1" max="10" value="" title="Tempo de selagem em segundos" />
-                    <select id="input-parametro" name="input-parametro" title="Volume a ser monitorado" required
+                    <select id="input-volume" name="input-volume" title="Volume a ser monitorado" required
                         class="block appearance-none bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500 w-4/12">
                         <option value="" disabled selected>Volume (g)</option>
                         <option value="50">50 g</option>
@@ -75,14 +90,14 @@
                     </select>
                     <input
                         class="flex-shrink-0 bg-green-400 border-green-400 hover:bg-green-500 hover:border-green-600 text-sm border-2 text-black font-semibold py-3 px-2 rounded w-4/12"
-                        type="submit" value="Salvar parâmetro" />
+                        type="submit" value="Salvar" />
                 </div>
             </form>
         </div>
         <div id="sensorValues">
             <div class="sensor-values">
                 <div id="vazao" class="vazao">0</div>
-                <label>Vazão</label>
+                <label>Vaz&atilde;ao</label>
             </div>
             <div class="sensor-values">
                 <div id="volume" class="volume">0</div>
@@ -122,23 +137,27 @@
             if (this.readyState == 4 && this.status == 200) {
                 var dataParametros = this.responseText.split('|');
                 var qtdPulsosCalib = dataParametros[0],
-                    fatorCalibracao = dataParametros[1],
+                    // fatorCalibracao = dataParametros[1],
+                    tipoLiquido = dataParametros[1],
                     tempoSelagem = dataParametros[2],
                     volumeASerEnvasado = dataParametros[3];
                 // document.getElementById("strPulsosCalib").innerHTML = qtdPulsosCalib + "/" + volumeASerEnvasado;
-                document.getElementById("strFatorCalibracao").innerHTML = fatorCalibracao;
+                // document.getElementById("strFatorCalibracao").innerHTML = fatorCalibracao;
+                document.getElementById("strTipoLiquido").innerHTML = tipoLiquido;
                 document.getElementById("strTempoSelagem").innerHTML = tempoSelagem;
                 document.getElementById("strVolumeASerEnvasado").innerHTML = volumeASerEnvasado;
                 globalVolumePrevisto = volumeASerEnvasado;
-                if (fatorCalibracao > 0) {
-                    document.getElementById("formMedicaoColeta").classList.add("hidden");
-                    document.getElementById("formFatorCalibracao").classList.add("hidden");
-                    document.getElementById("formVolumePrevisto").classList.remove("hidden");
+                if (tipoLiquido == "") {
+                    // document.getElementById("formMedicaoColeta").classList.add("hidden");
+                    // document.getElementById("formFatorCalibracao").classList.add("hidden");
+                    document.getElementById("formTipoLiquido").classList.remove("hidden");
+                    document.getElementById("formVolumePrevisto").classList.add("hidden");
                 }
                 else {
-                    document.getElementById("formMedicaoColeta").classList.remove("hidden");
-                    document.getElementById("formFatorCalibracao").classList.remove("hidden");
-                    document.getElementById("formVolumePrevisto").classList.add("hidden");
+                    // document.getElementById("formMedicaoColeta").classList.remove("hidden");
+                    // document.getElementById("formFatorCalibracao").classList.remove("hidden");
+                    document.getElementById("formTipoLiquido").classList.add("hidden");
+                    document.getElementById("formVolumePrevisto").classList.remove("hidden");
                 }
                 if (getTempoChamadaApi() != 1000)
                     alterarIntervalo(1000);
@@ -189,9 +208,12 @@
         else if (formId == "formFatorCalibracao") {
             data = "input-fator-calibracao=" + document.getElementById("input-fator-calibracao").value;
         }
+        else if (formId == "formTipoLiquido") {
+            data = "input-tipo-liquido=" + document.getElementById("input-tipo-liquido").value;
+        }
         else if (formId == "formVolumePrevisto") {
             data = "input-tempo-selagem=" + document.getElementById("input-tempo-selagem").value;
-            data += "&input-parametro=" + document.getElementById("input-parametro").value;
+            data += "&input-volume=" + document.getElementById("input-volume").value;
         }
         xhttp.send(data);
         console.log("Enviando dados: " + data);

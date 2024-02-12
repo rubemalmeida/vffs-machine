@@ -71,6 +71,13 @@ IPAddress secondaryDNS(8, 8, 8, 8);
 const int INTERVALO_MINIMO = 3000; // intervalo mínimo entre acionamentos do botão (em milisegundos)
 const String SUCESSO = "SUCESSO";
 const String ERROR = "ERROR";
+const String LIQ_AGUA = "agua";
+const String LIQ_MARACUJA = "maracuja";
+const String LIQ_MORANGO = "morango";
+const String LIQ_ABACAXI = "abacaxi";
+const String LIQ_MANGA = "manga";
+
+String tipoLiquido = "";
 
 // Variáveis globais a serem alteradas durante o processo
 int btnProcEstadoCorrente = HIGH; // the current reading from the input pin
@@ -119,7 +126,7 @@ long medicaoPreviousMillis = 0;
 int intervalMedicao = 1000;
 float flowRate;
 unsigned int flowMilliLitres;
-unsigned long totalMilliLitres;
+unsigned int totalMilliLitres;
 
 int repeticoesPiscaBranco = 0;
 int repeticoesPiscaVerde = 0;
@@ -212,8 +219,11 @@ String processor(const String &var)
     if (var == "PULSOS-CALIB")
         return String(GET_PULSE_COUNT()) + "/" + String(qtdPulsoAMonitorar);
 
-    if (var == "FATOR-CALIBRACAO" && fatorCalibracao > 0)
-        return String(fatorCalibracao);
+    // if (var == "FATOR-CALIBRACAO" && fatorCalibracao > 0)
+    //     return String(fatorCalibracao);
+
+    if (var == "TIPO-LIQUIDO")
+        return tipoLiquido;
 
     if (var == "TEMPO-SELAGEM")
         return String(tempoSelagem);
@@ -228,6 +238,9 @@ String processor(const String &var)
         return String("hidden");
 
     if (var == "HIDDEN-FORM-PARAMETRO") //&& fatorCalibracao == 0)
+        return String("hidden");
+
+    if (var == "HIDDEN-FORM-TIPO-LIQUIDO") // && tipoLiquido != "")
         return String("hidden");
 
     return String();
@@ -366,6 +379,7 @@ void checkEnvase()
     else if ((btnProcUltimoEstado == LOW &&
               btnProcEstadoCorrente == HIGH &&
               btnProcUltimoEstadoEfetivo == HIGH) ||
+             (modoEnvase && btnProcUltimoEstadoEfetivo == LOW) ||
              (modoEnvase && paradaEmergencial))
     {
         envase(false);
@@ -438,21 +452,26 @@ void checkParadaEmergencial()
 
 void checkMedicao()
 {
-    if ((modoEnvase || modoCalibracao) && (millis() - medicaoPreviousMillis >= intervalMedicao))
+    if (((modoEnvase || modoCalibracao) && (millis() - medicaoPreviousMillis >= intervalMedicao)) ||
+        (!modoEnvase && pulse1Sec > 0))
     {
-        medicaoPreviousMillis = millis();
-
-        if (modoEnvase && fatorCalibracao > 0)
+        if ((modoEnvase && qtdPulsoAMonitorar > 0) || (!modoEnvase && pulse1Sec > 0))
         {
             long qtdPulsoAnterior = pulse1Sec;
             long qtdPulsoAtual = GET_PULSE_COUNT();
             if (qtdPulsoAtual == 0)
                 return;
             pulse1Sec = qtdPulsoAtual - qtdPulsoAnterior;
-            flowRate = ((1000.0 / (millis() - medicaoPreviousMillis)) * pulse1Sec) / fatorCalibracao; // in L/min
+            // flowRate = ((1000.0 / (millis() - medicaoPreviousMillis)) * pulse1Sec); // in L/min
+            flowRate = 1;
+            if (tipoLiquido == LIQ_AGUA)
+                flowRate = 1.65E-03 * pulse1Sec + -2.55;
 
-            flowMilliLitres = (flowRate / 60) * 1000; // mL/s
-            totalMilliLitres += flowMilliLitres;      // mL
+            if (!modoEnvase)
+                pulse1Sec = 0;
+
+            flowMilliLitres = flowRate;
+            totalMilliLitres += flowRate;
             int tempoDecorrido = millis() - btnProcStartAcionamento;
             log("Envasando (" + String(tempoDecorrido / 1000) + "s)... " + String(qtdPulsoAtual) + " pulsos somados");
         }
@@ -461,6 +480,8 @@ void checkMedicao()
             int tempoDecorrido = millis() - btnCalibTempoPrimeiroPressionado;
             log("Calibrando (" + String(tempoDecorrido / 1000) + "s)... " + String(GET_PULSE_COUNT()) + " pulsos somados");
         }
+
+        medicaoPreviousMillis = millis();
     }
 }
 
@@ -478,39 +499,57 @@ void salvar(AsyncWebServerRequest *request)
             log("Valor não definido. POST[" + parametro + "]: " + valor);
             erro = true;
         }
-        else if (parametro == "input-medicao")
-        {
-            if (qtdPulsoCalibracao > 0)
-            {
-                float volumeDispensado = valor.toFloat();
-                log("Volume dispensado parametrizado: " + String(volumeDispensado));
-                fatorCalibracao = (volumeDispensado / qtdPulsoCalibracao) * 1000000;
-                log("Fator de calibracao calculado: " + String(fatorCalibracao));
-            }
-            else
-            {
-                log("Calibracao não identificada. Qtd de pulsos: " + String(qtdPulsoCalibracao));
-                erro = true;
-            }
-        }
-        else if (parametro == "input-fator-calibracao")
-        {
-            fatorCalibracao = valor.toFloat();
-            log("Fator de calibracao: " + String(fatorCalibracao));
-        }
+        // else if (parametro == "input-medicao")
+        // {
+        //     if (qtdPulsoCalibracao > 0)
+        //     {
+        //         float volumeDispensado = valor.toFloat();
+        //         log("Volume dispensado parametrizado: " + String(volumeDispensado));
+        //         fatorCalibracao = (volumeDispensado / qtdPulsoCalibracao) * 1000000;
+        //         log("Fator de calibracao calculado: " + String(fatorCalibracao));
+        //     }
+        //     else
+        //     {
+        //         log("Calibracao não identificada. Qtd de pulsos: " + String(qtdPulsoCalibracao));
+        //         erro = true;
+        //     }
+        // }
+        // else if (parametro == "input-fator-calibracao")
+        // {
+        //     fatorCalibracao = valor.toFloat();
+        //     log("Fator de calibracao: " + String(fatorCalibracao));
+        // }
         else if (parametro == "input-tempo-selagem")
             tempoSelagem = valor.toFloat();
-        else if (parametro == "input-parametro")
+        else if (parametro == "input-volume")
         {
-            if (fatorCalibracao > 0)
+            // if (fatorCalibracao > 0)
+            // {
+            qtdPulsoAMonitorar = 0;
+            volumeAserEnvasado = valor.toFloat();
+            if (tipoLiquido == LIQ_AGUA)
+                qtdPulsoAMonitorar = 605 * volumeAserEnvasado + 1822;
+            // qtdPulsoAMonitorar = round((volumeAserEnvasado * 1000000) / fatorCalibracao);
+            log("Quantidade de pulsos a monitorar: " + String(qtdPulsoAMonitorar) + " (" + tipoLiquido + ")");
+            // }
+            // else
+            // {
+            //     log("Fator de calibracao pendente");
+            //     erro = true;
+            // }
+        }
+        else if (parametro == "input-tipo-liquido")
+        {
+            // if one of the valid types
+            if (valor == LIQ_AGUA || valor == LIQ_MARACUJA || valor == LIQ_MORANGO || valor == LIQ_ABACAXI || valor == LIQ_MANGA)
             {
-                volumeAserEnvasado = valor.toFloat();
-                qtdPulsoAMonitorar = round((volumeAserEnvasado * 1000000) / fatorCalibracao);
+                tipoLiquido = valor;
+                log("Tipo de líquido: " + tipoLiquido);
             }
             else
             {
-                log("Fator de calibracao pendente");
                 erro = true;
+                log("Tipo de líquido não reconhecido: " + valor);
             }
         }
         else
@@ -519,6 +558,7 @@ void salvar(AsyncWebServerRequest *request)
             erro = true;
         }
     }
+
     if (erro)
     {
         piscarResposta(ERROR);
@@ -565,8 +605,8 @@ void calibracao(bool btnPressionado)
 
     log("c2.4");
     qtdPulsoCalibracao = 0;
-    qtdPulsoAMonitorar = 0;
-    fatorCalibracao = 0.0;
+    // qtdPulsoAMonitorar = 0;
+    // fatorCalibracao = 0.0;
 
     PIN_CONTROL(PIN_VALVULA_LIBERACAO, TURN_ON);
     waitDelay(1000);
@@ -585,15 +625,15 @@ void envase(bool btnPressionado)
     if (modoEnvase == true)
     {
         long qtdPulsoAtual = GET_PULSE_COUNT();
-        if (!btnPressionado && (totalMilliLitres > volumeAserEnvasado || qtdPulsoAtual > qtdPulsoAMonitorar))
+        if (!btnPressionado && (totalMilliLitres > volumeAserEnvasado || qtdPulsoAtual >= qtdPulsoAMonitorar))
         {
             PIN_CONTROL(PIN_VALVULA_ENVASE, TURN_OFF);
             PIN_CONTROL(PIN_MOTOR_BOMBA, TURN_OFF);
 
-            if (totalMilliLitres > volumeAserEnvasado)
+            if (totalMilliLitres >= volumeAserEnvasado)
                 log("Volume (" + String(totalMilliLitres) + "mL) atingido");
 
-            if (qtdPulsoAtual > qtdPulsoAMonitorar)
+            if (qtdPulsoAtual >= qtdPulsoAMonitorar)
                 log("Quantidade de pulsos (" + String(qtdPulsoAtual) + ") atingida");
 
             PIN_CONTROL(PIN_LED_VERDE, TURN_OFF);
@@ -607,11 +647,11 @@ void envase(bool btnPressionado)
     if (!btnPressionado)
         return;
 
-    if (fatorCalibracao == 0)
-    {
-        log("Fator de calibracao não definido");
-        return;
-    }
+    // if (fatorCalibracao == 0)
+    // {
+    //     log("Fator de calibracao não definido");
+    //     return;
+    // }
     if (tempoSelagem == 0 || volumeAserEnvasado == 0)
     {
         log("Tempo de selagem e/ou Volume a ser envasado não definidos");
@@ -627,6 +667,7 @@ void envase(bool btnPressionado)
     qtdPulsos = 0;
     interrupts();
 
+    pulse1Sec = 0;
     flowRate = 0.0;
     flowMilliLitres = 0;
     totalMilliLitres = 0;
@@ -719,7 +760,7 @@ void setup()
 
     server.on("/parametros", HTTP_GET, [](AsyncWebServerRequest *request)
               {
-    String response = String(qtdPulsoCalibracao) + "|" + String(fatorCalibracao) + "|" + tempoSelagem + "|" + volumeAserEnvasado;
+    String response = String(qtdPulsoCalibracao) + "|" + tipoLiquido + "|" + tempoSelagem + "|" + volumeAserEnvasado;
     request->send(200, "text/plain", response); });
 
     server.on("/medicao", HTTP_GET, [](AsyncWebServerRequest *request)

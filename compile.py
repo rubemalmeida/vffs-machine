@@ -27,7 +27,7 @@ def main():
         css_code = css_file.read()
 
     # Leitura do conteúdo do arquivo model.html
-    with open('model.html', 'r') as html_file:
+    with open('model.html', 'r', encoding='utf-8') as html_file:
         html_code = html_file.read()
 
     # Criação do arquivo temp-model.html
