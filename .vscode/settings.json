@@ -1,0 +1,9 @@
+{
+    "editor.formatOnSave": true,
+    "[ino]": {
+        "editor.defaultFormatter": "xaver.clang-format",
+    },
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    }
+}
